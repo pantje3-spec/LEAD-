@@ -56,6 +56,7 @@ export interface TeamMember {
   dealsClosed: number;
   revenueGenerated: number; // INR
   activeRate: number; // conversion rate %
+  staffId?: string; // Auto-generated or custom staff ID label
 }
 
 export interface AdCampaign {
@@ -154,3 +155,12 @@ export const STATUS_LOOKUP: Record<LeadStatus, { color: string; bg: string; bord
     desc: "Not a fit at this time"
   }
 };
+
+export interface RecurringTask {
+  id: string;
+  memberName: string;
+  title: string;
+  notes?: string;
+  frequency: "Daily" | "Mon-Fri" | "Weekends";
+  lastCompletedDate?: string; // YYYY-MM-DD
+}

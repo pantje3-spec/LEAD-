@@ -5,9 +5,10 @@ import {
   MessageSquare, Settings, LayoutDashboard, Plus, Briefcase, 
   Trash2, Phone, Mail, ChevronRight, ExternalLink, Sparkles, Send, 
   CheckCircle2, Bell, Clock, Calendar, HelpCircle, Edit, RefreshCw,
-  Download
+  Download, X, FileText
 } from "lucide-react";
 import AnalyticsView from "./AnalyticsView";
+import TaskPlannerWidget from "./TaskPlannerWidget";
 
 interface DesktopCRMProps {
   leads: Lead[];
@@ -62,6 +63,29 @@ export default function DesktopCRM({
   const [selectedSource, setSelectedSource] = useState("All");
   const [budgetMiniFilter, setBudgetMiniFilter] = useState<number>(0);
 
+  // Business / Lead Categories
+  const [availableCategories, setAvailableCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem("crm_categories_list_v1");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (err) {
+        // Fall back below
+      }
+    }
+    return [
+      "Ecommerce Brand",
+      "Dental Clinic",
+      "Real Estate",
+      "Fitness Studio",
+      "SaaS Startup",
+      "Hospital",
+      "Salon",
+      "Fitness"
+    ];
+  });
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
+
   // New Lead Creator Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -81,6 +105,13 @@ export default function DesktopCRM({
   const [newTplName, setNewTplName] = useState("");
   const [newTplTrigger, setNewTplTrigger] = useState<LeadStatus>("New Lead");
   const [newTplMessage, setNewTplMessage] = useState("");
+
+  // Team Management State
+  const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [newTeamRole, setNewTeamRole] = useState<"Admin" | "Sales Executive" | "Ad Campaign Manager" | "Content Strategist">("Sales Executive");
+  const [newTeamStaffId, setNewTeamStaffId] = useState("");
+  const [selectedReportMember, setSelectedReportMember] = useState<TeamMember | null>(null);
 
   // Filter leads based on active side tab or global searches
   const getFilteredLeads = () => {
@@ -115,10 +146,25 @@ export default function DesktopCRM({
     e.preventDefault();
     if (!newName.trim() || !newBusiness.trim()) return;
 
+    let finalCategory = newBusinessType;
+    if (newBusinessType === "__ADD_NEW__") {
+      const trimmed = customCategoryInput.trim();
+      if (trimmed) {
+        if (!availableCategories.includes(trimmed)) {
+          const updated = [...availableCategories, trimmed];
+          setAvailableCategories(updated);
+          localStorage.setItem("crm_categories_list_v1", JSON.stringify(updated));
+        }
+        finalCategory = trimmed;
+      } else {
+        finalCategory = "General";
+      }
+    }
+
     onAddLead({
       name: newName,
       businessName: newBusiness,
-      businessType: newBusinessType,
+      businessType: finalCategory,
       phone: newPhone || "+91 90000 12345",
       email: newEmail || `${newName.toLowerCase().replace(/\s/g, "")}@example.com`,
       budget: Number(newBudget),
@@ -131,6 +177,7 @@ export default function DesktopCRM({
     setNewName("");
     setNewBusiness("");
     setNewBusinessType("Ecommerce Brand");
+    setCustomCategoryInput("");
     setNewPhone("");
     setNewEmail("");
     setNewBudget(25000);
@@ -669,6 +716,9 @@ export default function DesktopCRM({
                 </div>
               </div>
 
+              {/* Task Planner Widget */}
+              <TaskPlannerWidget team={team} />
+
             </div>
           )}
 
@@ -1086,73 +1136,268 @@ export default function DesktopCRM({
           {activeMenu === "team" && (
             <div className="space-y-6">
               
-              {/* Leader Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                {team.map(m => {
-                  return (
-                    <div key={m.id} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-xs space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full ${m.avatarColor} font-black flex items-center justify-center shrink-0`}>
-                          {m.name.split(" ").map(p => p[0]).join("")}
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-900 dark:text-slate-100">{m.name}</h4>
-                          <p className="text-[10px] text-slate-400 font-semibold">{m.role}</p>
-                        </div>
-                      </div>
+              {/* Header with action bar */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-805/80 shadow-xs">
+                <div>
+                  <h3 className="text-base font-black text-slate-850 dark:text-slate-100 uppercase tracking-wider">Agency Staff Roster</h3>
+                  <p className="text-xs text-slate-400 mt-1">Manage sales representatives, campaign consultants, and performance metrics.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddTeamOpen(!isAddTeamOpen)}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-4 rounded-xl transition shadow-sm cursor-pointer select-none"
+                >
+                  <Plus className="w-4 h-4" />
+                  {isAddTeamOpen ? "Hide Panel" : "Onboard Staff Member"}
+                </button>
+              </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-slate-50 dark:border-slate-800/40">
-                        <div className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/50">
-                          <span className="text-[9px] text-slate-400 uppercase font-bold">Assigned</span>
-                          <p className="text-sm font-black text-slate-800 dark:text-slate-200">{m.leadsAssigned}</p>
-                        </div>
-                        <div className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/50">
-                          <span className="text-[9px] text-slate-400 uppercase font-bold">Closed Deals</span>
-                          <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{m.dealsClosed}</p>
-                        </div>
-                      </div>
+              {/* Add Team Member inline form */}
+              {isAddTeamOpen && (
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newTeamName.trim()) return;
 
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="text-slate-400">Conversion Power</span>
-                          <span className="font-bold text-slate-800 dark:text-slate-200">{Math.round(m.activeRate)}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                          <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${m.activeRate}%` }} />
-                        </div>
+                    const colors = [
+                      "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-805",
+                      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-805",
+                      "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300 border border-pink-200 dark:border-pink-805",
+                      "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-805",
+                      "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-805",
+                      "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border border-sky-200 dark:border-sky-805"
+                    ];
+
+                    const newMember: TeamMember = {
+                      id: `team_${Date.now()}`,
+                      name: newTeamName.trim(),
+                      role: newTeamRole,
+                      avatarColor: colors[Math.floor(Math.random() * colors.length)],
+                      leadsAssigned: 0,
+                      dealsClosed: 0,
+                      revenueGenerated: 0,
+                      activeRate: 0,
+                      staffId: newTeamStaffId.trim() || `EMP-${Math.floor(100 + Math.random() * 900)}`
+                    };
+
+                    onUpdateTeam([...team, newMember]);
+                    setNewTeamName("");
+                    setNewTeamStaffId("");
+                    setIsAddTeamOpen(false);
+                  }}
+                  className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-950 shadow-xs space-y-4"
+                >
+                  <h4 className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Specify Staff Member Credentials</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Full Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Sanya Roy"
+                        value={newTeamName}
+                        onChange={(e) => setNewTeamName(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold outline-none text-slate-800 dark:text-slate-100"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Staff ID / Code (e.g. EMP-105)</label>
+                      <div className="flex gap-1.5">
+                        <input 
+                          type="text" 
+                          placeholder="e.g. EMP-105"
+                          value={newTeamStaffId}
+                          onChange={(e) => setNewTeamStaffId(e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold font-mono outline-none text-slate-800 dark:text-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewTeamStaffId(`EMP-${Math.floor(100 + Math.random() * 900)}`)}
+                          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 font-bold px-3 rounded-xl transition text-[10px]"
+                        >
+                          Auto
+                        </button>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1.5">Performance Designation Role</label>
+                      <select 
+                        value={newTeamRole}
+                        onChange={(e) => setNewTeamRole(e.target.value as any)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-xl p-2.5 text-xs font-semibold outline-none text-slate-800 dark:text-slate-100"
+                      >
+                        <option value="Sales Executive">Sales Executive</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Ad Campaign Manager">Ad Campaign Manager</option>
+                        <option value="Content Strategist">Content Strategist</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddTeamOpen(false)}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs py-2 px-4 rounded-xl transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2 px-5 rounded-xl transition cursor-pointer"
+                    >
+                      Add Executive
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Leader Metrics */}
+              {team.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  {team.map(m => {
+                    return (
+                      <div 
+                        key={m.id} 
+                        onClick={() => setSelectedReportMember(m)}
+                        className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-xs space-y-3 relative group hover:border-indigo-400 dark:hover:border-indigo-500 cursor-pointer transition-all duration-200"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-full ${m.avatarColor} font-black flex items-center justify-center shrink-0`}>
+                              {m.name.split(" ").map(p => p[0]).join("")}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4 className="font-extrabold text-slate-900 dark:text-slate-100">{m.name}</h4>
+                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono font-bold px-1 py-0.2 rounded text-[8px] tracking-wider shrink-0 uppercase">
+                                  {m.staffId || "STAFF"}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-semibold">{m.role}</p>
+                            </div>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm(`Are you sure you want to remove ${m.name} from roster?`)) {
+                                const updated = team.filter(t => t.id !== m.id);
+                                onUpdateTeam(updated);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer select-none"
+                            title="Delete staff member"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-center pt-2 border-t border-slate-50 dark:border-slate-800/40">
+                          <div className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/50">
+                            <span className="text-[9px] text-slate-400 uppercase font-bold">Assigned</span>
+                            <p className="text-sm font-black text-slate-800 dark:text-slate-200">{m.leadsAssigned}</p>
+                          </div>
+                          <div className="p-2.5 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/50">
+                            <span className="text-[9px] text-slate-400 uppercase font-bold">Closed Deals</span>
+                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{m.dealsClosed}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="text-slate-400">Conversion Power</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{Math.round(m.activeRate)}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${m.activeRate}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="pt-1.5 flex justify-between items-center text-[10px] text-indigo-600 dark:text-indigo-400 font-bold border-t border-slate-50 dark:border-slate-800/40 mt-1">
+                          <span>View Report</span>
+                          <ChevronRight className="w-3 h-3 transform group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center p-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-2xl">
+                  <p className="text-xs text-slate-400">No registered team members yet. Click Onboard Staff Member above to add them manually.</p>
+                </div>
+              )}
 
               {/* Roster Table */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-805 shadow-xs space-y-4">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Team Active Sales Pipelines</h3>
-                
-                <div className="overflow-x-auto rounded-xl border border-slate-50 dark:border-slate-805">
-                  <table className="w-full text-left text-xs text-slate-500">
-                    <thead className="bg-slate-50 dark:bg-slate-950 font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                      <tr>
-                        <th className="p-3 pl-4">Staff Member</th>
-                        <th className="p-3">Designation</th>
-                        <th className="p-3">Conversion Rate</th>
-                        <th className="p-3">Revenue Earned (INR)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                      {team.map(m => (
-                        <tr key={m.id} className="hover:bg-slate-50/50 text-slate-600 dark:text-slate-300">
-                          <td className="p-3 pl-4 font-extrabold text-slate-900 dark:text-slate-150">{m.name}</td>
-                          <td className="p-3">{m.role}</td>
-                          <td className="p-3 text-indigo-600 font-bold">{Math.round(m.activeRate)}%</td>
-                          <td className="p-3 font-mono font-bold text-slate-800 dark:text-slate-200">₹{(m.revenueGenerated).toLocaleString("en-IN")}</td>
+              {team.length > 0 && (
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-805 shadow-xs space-y-4">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Team Active Sales Pipelines</h3>
+                  
+                  <div className="overflow-x-auto rounded-xl border border-slate-50 dark:border-slate-805">
+                    <table className="w-full text-left text-xs text-slate-500">
+                      <thead className="bg-slate-50 dark:bg-slate-950 font-bold text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                        <tr>
+                          <th className="p-3 pl-4">Staff Member</th>
+                          <th className="p-3">Designation</th>
+                          <th className="p-3">Conversion Rate</th>
+                          <th className="p-3">Revenue Earned (INR)</th>
+                          <th className="p-3 text-right pr-4">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium font-sans">
+                        {team.map(m => (
+                          <tr 
+                            key={m.id} 
+                            onClick={() => setSelectedReportMember(m)}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-300 cursor-pointer transition"
+                          >
+                             <td className="p-3 pl-4 font-extrabold text-slate-900 dark:text-slate-150">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-6 h-6 rounded-full ${m.avatarColor} text-[8px] font-black flex items-center justify-center shrink-0`}>
+                                  {m.name.split(" ").map(p => p[0]).join("")}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{m.name}</span>
+                                  <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-mono font-bold px-1 rounded text-[8px] tracking-wider uppercase shrink-0">
+                                    {m.staffId || "STAFF"}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-3">{m.role}</td>
+                            <td className="p-3 text-indigo-600 font-bold">{Math.round(m.activeRate)}%</td>
+                            <td className="p-3 font-mono font-bold text-slate-800 dark:text-slate-200">₹{(m.revenueGenerated).toLocaleString("en-IN")}</td>
+                            <td className="p-3 text-right pr-4">
+                              <div className="flex justify-end items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedReportMember(m)}
+                                  className="px-2.5 py-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition"
+                                >
+                                  View Report
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to remove ${m.name} from roster?`)) {
+                                      const updated = team.filter(t => t.id !== m.id);
+                                      onUpdateTeam(updated);
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer select-none"
+                                  title="Delete representative record"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
           )}
@@ -1234,12 +1479,44 @@ export default function DesktopCRM({
                     onChange={(e) => setNewBusinessType(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-xl p-2 text-slate-800 dark:text-slate-200 outline-none"
                   >
-                    <option value="Ecommerce Brand">Ecommerce Brand</option>
-                    <option value="Dental Clinic">Dental Clinic</option>
-                    <option value="Real Estate">Real Estate Broker</option>
-                    <option value="Fitness Studio">Fitness Studio</option>
-                    <option value="SaaS Startup">SaaS Startup</option>
+                    {availableCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                    <option value="__ADD_NEW__" className="text-indigo-600 font-bold">+ Create Custom Category...</option>
                   </select>
+
+                  {newBusinessType === "__ADD_NEW__" && (
+                    <div className="mt-2 p-2 bg-indigo-50/20 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-950 rounded-xl">
+                      <label className="block text-[9px] uppercase font-bold text-indigo-500 mb-1">Enter Custom Category</label>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="e.g., Hospital, Salon, Spa"
+                          value={customCategoryInput}
+                          onChange={(e) => setCustomCategoryInput(e.target.value)}
+                          className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-xs font-semibold outline-none text-slate-800 dark:text-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const trimmed = customCategoryInput.trim();
+                            if (trimmed) {
+                              if (!availableCategories.includes(trimmed)) {
+                                const updated = [...availableCategories, trimmed];
+                                setAvailableCategories(updated);
+                                localStorage.setItem("crm_categories_list_v1", JSON.stringify(updated));
+                              }
+                              setNewBusinessType(trimmed);
+                              setCustomCategoryInput("");
+                            }
+                          }}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 text-xs font-bold transition cursor-pointer select-none"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1343,6 +1620,151 @@ export default function DesktopCRM({
           </div>
         </div>
       )}
+
+      {/* TEAM MEMBER DETAILED REPORT MODAL */}
+      {selectedReportMember && (() => {
+        const member = selectedReportMember;
+        const memberLeads = leads.filter(l => l.assignedTo === member.name);
+        const totalLeads = memberLeads.length;
+        const activeLeads = memberLeads.filter(l => l.status !== "Not Interested" && l.status !== "Closed").length;
+        const closedLeads = memberLeads.filter(l => l.status === "Closed").length;
+        const totalRevenue = memberLeads.filter(l => l.status === "Closed").reduce((acc, l) => acc + (l.budget || 0), 0);
+        const pipelineValue = memberLeads.reduce((acc, l) => acc + (l.budget || 0), 0);
+        const autoConversionRate = totalLeads > 0 ? Math.round((closedLeads / totalLeads) * 100) : 0;
+
+        return (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden text-xs flex flex-col max-h-[85vh]">
+              
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${member.avatarColor} font-black flex items-center justify-center text-sm shrink-0`}>
+                    {member.name.split(" ").map(p => p[0]).join("")}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-black text-slate-850 dark:text-slate-100 uppercase tracking-wider">{member.name}</h4>
+                      <span className="bg-indigo-600 text-white font-mono font-bold px-1.5 py-0.5 rounded text-[9px] tracking-wider uppercase">
+                        {member.staffId || "STAFF"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-semibold">{member.role} · Metrics & Associated Pipelines</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedReportMember(null)}
+                  className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Content Body - Scrollable */}
+              <div className="p-6 space-y-6 overflow-y-auto flex-1">
+                
+                {/* Scorecards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Total Assigned</span>
+                    <p className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-1">{totalLeads}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Active Deals</span>
+                    <p className="text-base font-extrabold text-blue-600 dark:text-blue-400 mt-1">{activeLeads}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Closed Deals</span>
+                    <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-1">{closedLeads}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800/80 text-center">
+                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider">Conversion rate</span>
+                    <p className="text-base font-extrabold text-amber-600 dark:text-amber-400 mt-1">{autoConversionRate}%</p>
+                  </div>
+                </div>
+
+                {/* Second row stats */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-emerald-50/10 dark:bg-emerald-950/10 border border-emerald-100/30 dark:border-emerald-950/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <DollarSign className="w-4 h-4 text-emerald-600" />
+                      <span className="font-extrabold text-[10px] uppercase text-emerald-600 tracking-wider">Revenue Earned</span>
+                    </div>
+                    <p className="text-lg font-black text-slate-800 dark:text-slate-100">₹{totalRevenue.toLocaleString("en-IN")}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Sum of budget allocations from successfully closed clients.</p>
+                  </div>
+
+                  <div className="p-4 bg-indigo-50/10 dark:bg-indigo-950/10 border border-indigo-100/30 dark:border-indigo-950/30 rounded-xl">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <TrendingUp className="w-4 h-4 text-indigo-600" />
+                      <span className="font-extrabold text-[10px] uppercase text-indigo-600 tracking-wider">Total Pipeline Value</span>
+                    </div>
+                    <p className="text-lg font-black text-slate-800 dark:text-slate-100">₹{pipelineValue.toLocaleString("en-IN")}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Cumulative budgets of all assigned prospect accounts.</p>
+                  </div>
+                </div>
+
+                {/* Assigned Leads Breakdown section */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <h5 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-slate-400" />
+                      <span>Associated Contacts & Pipelines ({totalLeads})</span>
+                    </h5>
+                    <span className="text-[10px] text-slate-400">Click any contact to open their workspace</span>
+                  </div>
+
+                  {memberLeads.length > 0 ? (
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[180px] overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-xl">
+                      {memberLeads.map((lead) => {
+                        return (
+                          <div 
+                            key={lead.id}
+                            onClick={() => {
+                              onSelectLead(lead);
+                              setSelectedReportMember(null);
+                            }}
+                            className="p-3 flex justify-between items-center bg-white dark:bg-slate-900 hover:bg-indigo-50/30 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
+                          >
+                            <div className="space-y-0.5">
+                              <p className="font-extrabold text-slate-800 dark:text-slate-150">{lead.businessName}</p>
+                              <p className="text-[10px] text-slate-400 font-semibold">{lead.name} · {lead.businessType}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">₹{(lead.budget || 0).toLocaleString("en-IN")}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${STATUS_LOOKUP[lead.status]?.color || ""} ${STATUS_LOOKUP[lead.status]?.bg || ""} border ${STATUS_LOOKUP[lead.status]?.border || ""}`}>
+                                {lead.status}
+                              </span>
+                              <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 bg-slate-50 dark:bg-slate-950/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-850">
+                      <p className="text-[11px] text-slate-400">This member currently has no active leads assigned in the database.</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Edit a lead context to shift ownership to this representative.</p>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 flex justify-end">
+                <button 
+                  onClick={() => setSelectedReportMember(null)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl font-bold transition shadow-sm cursor-pointer"
+                >
+                  Close Report
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

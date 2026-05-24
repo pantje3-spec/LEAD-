@@ -29,6 +29,29 @@ export default function MobileCRM({
   const [selectedMobileStatus, setSelectedMobileStatus] = useState<LeadStatus | "All">("All");
   const [activeLeadDetailsId, setActiveLeadDetailsId] = useState<string | null>(null);
   
+  // Business / Lead Categories
+  const [availableCategories, setAvailableCategories] = useState<string[]>(() => {
+    const saved = localStorage.getItem("crm_categories_list_v1");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (err) {
+        // Fall back below
+      }
+    }
+    return [
+      "Ecommerce Brand",
+      "Dental Clinic",
+      "Real Estate",
+      "Fitness Studio",
+      "SaaS Startup",
+      "Hospital",
+      "Salon",
+      "Fitness"
+    ];
+  });
+  const [customCategoryInput, setCustomCategoryInput] = useState("");
+
   // Mobile Quick Add Lead Modal
   const [isMobileAddOpen, setIsMobileAddOpen] = useState(false);
   const [newMobileName, setNewMobileName] = useState("");
@@ -82,10 +105,26 @@ export default function MobileCRM({
 
   const handleMobileAddSubmit = () => {
     if (!newMobileName.trim() || !newMobileBusiness.trim()) return;
+
+    let finalCategory = newMobileBusinessType;
+    if (newMobileBusinessType === "__ADD_NEW__") {
+      const trimmed = customCategoryInput.trim();
+      if (trimmed) {
+        if (!availableCategories.includes(trimmed)) {
+          const updated = [...availableCategories, trimmed];
+          setAvailableCategories(updated);
+          localStorage.setItem("crm_categories_list_v1", JSON.stringify(updated));
+        }
+        finalCategory = trimmed;
+      } else {
+        finalCategory = "General";
+      }
+    }
+
     onAddLead({
       name: newMobileName,
       businessName: newMobileBusiness,
-      businessType: newMobileBusinessType,
+      businessType: finalCategory,
       phone: newMobilePhone || "+91 90000 11111",
       email: `${newMobileName.toLowerCase().replace(/\s/g, "")}@example.com`,
       budget: Number(newMobileBudget),
@@ -99,6 +138,8 @@ export default function MobileCRM({
     setNewMobileBusiness("");
     setNewMobilePhone("");
     setNewMobileBudget(25000);
+    setNewMobileBusinessType("Ecommerce Brand");
+    setCustomCategoryInput("");
     setIsMobileAddOpen(false);
 
     // Instant Mobile Push alert
@@ -597,12 +638,43 @@ export default function MobileCRM({
                       onChange={(e) => setNewMobileBusinessType(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-105 dark:border-slate-800 rounded-xl p-2 text-xs outline-none"
                     >
-                      <option value="Ecommerce Brand">Ecommerce</option>
-                      <option value="Dental Clinic">Dental</option>
-                      <option value="Real Estate">Real Estate</option>
-                      <option value="Fitness Studio">Fitness Gym</option>
-                      <option value="SaaS Startup">SaaS / App</option>
+                      {availableCategories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                      <option value="__ADD_NEW__" className="text-indigo-600 font-bold">+ Custom Category...</option>
                     </select>
+
+                    {newMobileBusinessType === "__ADD_NEW__" && (
+                      <div className="mt-1.5 p-1.5 bg-indigo-50/10 dark:bg-indigo-950/10 border border-indigo-100/10 rounded-lg">
+                        <div className="flex gap-1.5">
+                          <input 
+                            type="text" 
+                            placeholder="e.g., Hospital, Salon"
+                            value={customCategoryInput}
+                            onChange={(e) => setCustomCategoryInput(e.target.value)}
+                            className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-[11px] outline-none text-slate-850 dark:text-slate-100"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const trimmed = customCategoryInput.trim();
+                              if (trimmed) {
+                                if (!availableCategories.includes(trimmed)) {
+                                  const updated = [...availableCategories, trimmed];
+                                  setAvailableCategories(updated);
+                                  localStorage.setItem("crm_categories_list_v1", JSON.stringify(updated));
+                                }
+                                setNewMobileBusinessType(trimmed);
+                                setCustomCategoryInput("");
+                              }
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-2 py-1 text-[11px] font-bold transition"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -9,7 +9,8 @@ export const DEFAULT_TEAM: TeamMember[] = [
     leadsAssigned: 12,
     dealsClosed: 8,
     revenueGenerated: 240000,
-    activeRate: 66.6
+    activeRate: 66.6,
+    staffId: "EMP-101"
   },
   {
     id: "team_2",
@@ -19,7 +20,8 @@ export const DEFAULT_TEAM: TeamMember[] = [
     leadsAssigned: 18,
     dealsClosed: 5,
     revenueGenerated: 150000,
-    activeRate: 27.7
+    activeRate: 27.7,
+    staffId: "EMP-102"
   },
   {
     id: "team_3",
@@ -29,7 +31,8 @@ export const DEFAULT_TEAM: TeamMember[] = [
     leadsAssigned: 6,
     dealsClosed: 3,
     revenueGenerated: 90000,
-    activeRate: 50.0
+    activeRate: 50.0,
+    staffId: "EMP-103"
   },
   {
     id: "team_4",
@@ -39,60 +42,12 @@ export const DEFAULT_TEAM: TeamMember[] = [
     leadsAssigned: 8,
     dealsClosed: 4,
     revenueGenerated: 120000,
-    activeRate: 50.0
+    activeRate: 50.0,
+    staffId: "EMP-104"
   }
 ];
 
-export const DEFAULT_CAMPAIGNS: AdCampaign[] = [
-  {
-    id: "camp_1",
-    name: "Meta Lead Gen - High Budget Ecom",
-    platform: "Meta Ads",
-    status: "Active",
-    spend: 42000,
-    leads: 84,
-    cpl: 500,
-    ctr: 2.8,
-    conversions: 8,
-    revenue: 240000
-  },
-  {
-    id: "camp_2",
-    name: "Dental & Local Medical Clinic Reels",
-    platform: "Meta Ads",
-    status: "Active",
-    spend: 18000,
-    leads: 45,
-    cpl: 400,
-    ctr: 3.2,
-    conversions: 4,
-    revenue: 120000
-  },
-  {
-    id: "camp_3",
-    name: "SaaS Cold Custom Outreaches",
-    platform: "Instagram DM",
-    status: "Active",
-    spend: 5000,
-    leads: 20,
-    cpl: 250,
-    ctr: 4.8,
-    conversions: 2,
-    revenue: 80000
-  },
-  {
-    id: "camp_4",
-    name: "Local Gym Lead Funnel campaign",
-    platform: "TikTok Ads",
-    status: "Paused",
-    spend: 15000,
-    leads: 30,
-    cpl: 500,
-    ctr: 1.9,
-    conversions: 1,
-    revenue: 30000
-  }
-];
+export const DEFAULT_CAMPAIGNS: AdCampaign[] = [];
 
 export const DEFAULT_TEMPLATES: WhatsappTemplate[] = [
   {
