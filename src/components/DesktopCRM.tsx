@@ -4,7 +4,8 @@ import {
   Users, TrendingUp, DollarSign, Activity, Search, Shield, 
   MessageSquare, Settings, LayoutDashboard, Plus, Briefcase, 
   Trash2, Phone, Mail, ChevronRight, ExternalLink, Sparkles, Send, 
-  CheckCircle2, Bell, Clock, Calendar, HelpCircle, Edit, RefreshCw
+  CheckCircle2, Bell, Clock, Calendar, HelpCircle, Edit, RefreshCw,
+  Download
 } from "lucide-react";
 import AnalyticsView from "./AnalyticsView";
 
@@ -159,6 +160,67 @@ export default function DesktopCRM({
   // Delete WhatsApp Template
   const handleDeleteTemplate = (id: string) => {
     onUpdateTemplates(whatsappTemplates.filter(t => t.id !== id));
+  };
+
+  // Download filtered leads into CSV format
+  const handleDownloadCSV = () => {
+    const headers = [
+      "Company Name",
+      "Lead Contact Name",
+      "Business Type",
+      "SMM Budget (INR)",
+      "Channels Source",
+      "Assigned Specialist",
+      "Pipeline Status",
+      "Email Address",
+      "Phone Number",
+      "Created Date"
+    ];
+    
+    const rows = filteredLeads.map(l => {
+      const bType = l.businessType || "N/A";
+      const createdDate = l.activities && l.activities.length > 0 
+        ? l.activities[l.activities.length - 1].timestamp 
+        : "N/A";
+
+      // Properly escape comma/quotes/newlines for CSV safety
+      const escapeField = (val: string) => {
+        const clean = val.replace(/"/g, '""');
+        return `"${clean}"`;
+      };
+
+      return [
+        escapeField(l.businessName),
+        escapeField(l.name),
+        escapeField(bType),
+        l.budget,
+        escapeField(l.leadSource),
+        escapeField(l.assignedTo),
+        escapeField(l.status),
+        escapeField(l.email),
+        escapeField(l.phone),
+        escapeField(createdDate)
+      ];
+    });
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+
+    // Dynamic clean name like leadflow_raw_ad_captures_2026-05-24.csv
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const folderCleanName = activeMenu.replace("_", "-");
+    link.setAttribute("download", `leadflow_export_${folderCleanName}_${dateStr}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Dynamic SMM campaign planner architect
@@ -328,12 +390,6 @@ export default function DesktopCRM({
           {/* Right widgets */}
           <div className="flex items-center gap-4">
             
-            {/* Today's Counter */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-900/60 text-xs">
-              <Clock className="w-3.5 h-3.5 text-orange-500" />
-              <span>Captured today: <strong className="font-extrabold">{todayLeadsCount}</strong></span>
-            </div>
-
             {/* Dark & Light Toggle */}
             <button 
               onClick={onToggleDarkMode}
@@ -824,9 +880,19 @@ export default function DesktopCRM({
                   <p className="text-xs text-slate-400 mt-1">Direct listing of matches matching current folder rules.</p>
                 </div>
 
-                <div className="flex gap-2">
-                  <span className="text-xs font-bold text-slate-500 py-1 px-2.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-100">
-                    Active: {filteredLeads.length}
+                <div className="flex gap-2 items-center flex-wrap">
+                  <button 
+                    onClick={handleDownloadCSV}
+                    disabled={filteredLeads.length === 0}
+                    className="flex items-center gap-1.5 text-xs font-bold bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-850 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-850 rounded-xl px-3.5 py-1.5 transition text-slate-700 dark:text-slate-300 shadow-2xs hover:shadow-xs cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed"
+                    id="btn-download-csv"
+                    title="Export currently filtered list as an enterprise ready CSV reporting sheet"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download CSV
+                  </button>
+                  <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 py-1.5 px-3 rounded-xl bg-indigo-50/55 dark:bg-indigo-950/20 border border-indigo-100/30">
+                    Total: {filteredLeads.length}
                   </span>
                 </div>
               </div>

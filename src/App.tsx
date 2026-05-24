@@ -5,9 +5,7 @@ import {
   DEFAULT_TEMPLATES, DEFAULT_REMINIDERS, DEFAULT_NOTIFICATIONS 
 } from "./mockData";
 import DesktopCRM from "./components/DesktopCRM";
-import MobileCRM from "./components/MobileCRM";
 import LeadDetailsModal from "./components/LeadDetailsModal";
-import { Columns, Eye, Laptop, Smartphone, Sparkles } from "lucide-react";
 
 export default function App() {
   // Global States loaded from LocalStorage (for real-world SaaS persistent experience)
@@ -19,13 +17,21 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotificationMsg[]>([]);
 
   // UI Selection States
-  const [activeCRMView, setActiveCRMView] = useState<"split" | "desktop" | "mobile">("split");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // 1. Initial State Hydration
   useEffect(() => {
+    // Force reset old preloaded mock data to guarantee a pristine start state
+    const hasBeenReset = localStorage.getItem("leads_reset_clean_slate_1");
+    if (!hasBeenReset) {
+      localStorage.removeItem("leads_crm");
+      localStorage.removeItem("reminders_crm");
+      localStorage.removeItem("notifs_crm");
+      localStorage.setItem("leads_reset_clean_slate_1", "true");
+    }
+
     const savedLeads = localStorage.getItem("leads_crm");
     const savedTemplates = localStorage.getItem("templates_crm");
     const savedTeam = localStorage.getItem("team_crm");
@@ -34,8 +40,8 @@ export default function App() {
 
     if (savedLeads) setLeads(JSON.parse(savedLeads));
     else {
-      setLeads(INITIAL_LEADS);
-      localStorage.setItem("leads_crm", JSON.stringify(INITIAL_LEADS));
+      setLeads([]);
+      localStorage.setItem("leads_crm", JSON.stringify([]));
     }
 
     if (savedTemplates) setWhatsappTemplates(JSON.parse(savedTemplates));
@@ -52,14 +58,14 @@ export default function App() {
 
     if (savedReminders) setReminders(JSON.parse(savedReminders));
     else {
-      setReminders(DEFAULT_REMINIDERS);
-      localStorage.setItem("reminders_crm", JSON.stringify(DEFAULT_REMINIDERS));
+      setReminders([]);
+      localStorage.setItem("reminders_crm", JSON.stringify([]));
     }
 
     if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
     else {
-      setNotifications(DEFAULT_NOTIFICATIONS);
-      localStorage.setItem("notifs_crm", JSON.stringify(DEFAULT_NOTIFICATIONS));
+      setNotifications([]);
+      localStorage.setItem("notifs_crm", JSON.stringify([]));
     }
 
     setCampaigns(DEFAULT_CAMPAIGNS);
@@ -193,91 +199,32 @@ export default function App() {
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans select-none">
       
-      {/* 1. Global View Control Ribbon Header */}
-      <div className="h-12 bg-slate-900 border-b border-slate-800 shrink-0 px-4 flex items-center justify-between text-white relative z-40 select-none">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-          <h2 className="text-xs font-black tracking-wider uppercase">LeadFlow Sync Workspace</h2>
-        </div>
-
-        {/* Workspace Display Mode Selectors */}
-        <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-[10px]">
-          {[
-            { id: "split", label: "Split Console + Mobile Sync", icon: Columns },
-            { id: "desktop", label: "Desktop CRM Only", icon: Laptop },
-            { id: "mobile", label: "Mobile app Simulator", icon: Smartphone }
-          ].map(view => {
-            const Icon = view.icon;
-            return (
-              <button
-                key={view.id}
-                onClick={() => setActiveCRMView(view.id as any)}
-                className={`py-1 px-3 rounded-md font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
-                  activeCRMView === view.id 
-                    ? "bg-indigo-600 text-white shadow-xs" 
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{view.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="hidden md:flex items-center gap-2.5 text-[10px] font-mono text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-          <span>REALTIME TUNNEL: ACTIVE</span>
-        </div>
-      </div>
-
-      {/* 2. Unified Content Deck (Side-by-side or singular view) */}
+      {/* 2. Unified Content Desk (Singular Desktop CRM Only) */}
       <div className="flex-1 flex overflow-hidden relative">
-        
-        {/* Desktop Interface Portal */}
-        {(activeCRMView === "split" || activeCRMView === "desktop") && (
-          <div className="flex-1 flex overflow-hidden">
-            <DesktopCRM 
-              leads={leads}
-              team={team}
-              campaigns={campaigns}
-              whatsappTemplates={whatsappTemplates}
-              reminders={reminders}
-              notifications={notifications}
-              onUpdateLead={handleUpdateLead}
-              onAddLead={handleAddLead}
-              onDeleteLead={handleDeleteLead}
-              onSelectLead={handleSelectLeadToReview}
-              onUpdateTemplates={(updated) => {
-                setWhatsappTemplates(updated);
-                localStorage.setItem("templates_crm", JSON.stringify(updated));
-              }}
-              onUpdateTeam={(updated) => {
-                setTeam(updated);
-                localStorage.setItem("team_crm", JSON.stringify(updated));
-              }}
-              isDarkMode={isDarkMode}
-              onToggleDarkMode={handleToggleDarkMode}
-            />
-          </div>
-        )}
-
-        {/* Mobile Device Mockup Simulator Container */}
-        {(activeCRMView === "split" || activeCRMView === "mobile") && (
-          <div className={`p-6 bg-slate-100 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-y-auto shrink-0 select-none ${
-            activeCRMView === "split" ? "w-[400px] border-l" : "flex-1"
-          }`}>
-            <MobileCRM 
-              leads={leads}
-              team={team}
-              reminders={reminders}
-              onUpdateLead={handleUpdateLead}
-              onAddLead={handleAddLead}
-              whatsappTemplates={whatsappTemplates}
-            />
-          </div>
-        )}
-
+        <div className="flex-1 flex overflow-hidden">
+          <DesktopCRM 
+            leads={leads}
+            team={team}
+            campaigns={campaigns}
+            whatsappTemplates={whatsappTemplates}
+            reminders={reminders}
+            notifications={notifications}
+            onUpdateLead={handleUpdateLead}
+            onAddLead={handleAddLead}
+            onDeleteLead={handleDeleteLead}
+            onSelectLead={handleSelectLeadToReview}
+            onUpdateTemplates={(updated) => {
+              setWhatsappTemplates(updated);
+              localStorage.setItem("templates_crm", JSON.stringify(updated));
+            }}
+            onUpdateTeam={(updated) => {
+              setTeam(updated);
+              localStorage.setItem("team_crm", JSON.stringify(updated));
+            }}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={handleToggleDarkMode}
+          />
+        </div>
       </div>
 
       {/* 3. Global Slide Drawer reviewing CRM details */}
