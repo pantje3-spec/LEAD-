@@ -10,6 +10,8 @@ import {
 import AnalyticsView from "./AnalyticsView";
 import TaskPlannerWidget from "./TaskPlannerWidget";
 
+import { User } from "firebase/auth";
+
 interface DesktopCRMProps {
   leads: Lead[];
   team: TeamMember[];
@@ -25,6 +27,11 @@ interface DesktopCRMProps {
   onUpdateTeam: (updated: TeamMember[]) => void;
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
+  currentUser?: User | null;
+  isAuthLoading?: boolean;
+  isSyncing?: boolean;
+  loginWithGoogle?: () => void;
+  logoutUser?: () => void;
 }
 
 export default function DesktopCRM({
@@ -41,7 +48,12 @@ export default function DesktopCRM({
   onUpdateTemplates,
   onUpdateTeam,
   isDarkMode,
-  onToggleDarkMode
+  onToggleDarkMode,
+  currentUser,
+  isAuthLoading,
+  isSyncing,
+  loginWithGoogle,
+  logoutUser
 }: DesktopCRMProps) {
 
   // Active Menu Tabs
@@ -404,15 +416,66 @@ export default function DesktopCRM({
           })}
         </nav>
 
-        {/* User Mini Profile Foot */}
-        <div className="p-4 border-t border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
-            AG
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">Abhiraj Gupta</h4>
-            <p className="text-[10px] font-semibold text-indigo-500 truncate">Administrator Account</p>
-          </div>
+        {/* User Mini Profile Foot & Firebase Cloud Sync Controller */}
+        <div className="p-4 border-t border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 space-y-3">
+          {isAuthLoading ? (
+            <div className="flex items-center justify-center p-2 text-[10px] font-bold text-slate-400">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1.5" /> Checking Cloud Sync...
+            </div>
+          ) : currentUser ? (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-3">
+                {currentUser.photoURL ? (
+                  <img 
+                    src={currentUser.photoURL} 
+                    alt={currentUser.displayName || "User"} 
+                    className="w-9 h-9 rounded-full border border-indigo-100 object-cover shrink-0"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+                    {currentUser.displayName ? currentUser.displayName.split(" ").map(p => p[0]).join("") : "U"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1">
+                    <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-100 truncate">
+                      {currentUser.displayName || "Agency Partner"}
+                    </h4>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Real-time Sync Active" />
+                  </div>
+                  <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-400 truncate">
+                    {currentUser.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-1.5 pt-1">
+                <span className="flex-1 text-[8px] font-mono font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/40 p-1 px-1.5 rounded flex items-center gap-1">
+                  <Shield className="w-2.5 h-2.5" /> CLOUD SYNC ACTIVE
+                </span>
+                <button
+                  onClick={logoutUser}
+                  className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 font-bold px-2 rounded-md transition text-[8px] tracking-wide uppercase"
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-tight">
+                Securely save your agency leads & templates to the Google Cloud.
+              </p>
+              <button
+                onClick={loginWithGoogle}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-2 px-3 rounded-xl transition text-[10px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-indigo-500/20"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Sync with Google Cloud
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -1411,6 +1474,18 @@ export default function DesktopCRM({
               </div>
 
               <div className="space-y-4">
+                <div className="flex justify-between items-center py-3 border-b border-slate-50 dark:border-slate-800">
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 dark:text-slate-200">Google Firestore Database</h4>
+                    <p className="text-[10px] text-slate-400">
+                      {currentUser ? `Connected securely via account ${currentUser.email}` : "Offline local backup cache active."}
+                    </p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-[10px] font-black rounded-md ${currentUser ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-600" : "bg-amber-50 dark:bg-amber-950 text-amber-600"}`}>
+                    {currentUser ? "ACTIVE & SYNCED" : "LOCAL MODE"}
+                  </span>
+                </div>
+
                 <div className="flex justify-between items-center py-3 border-b border-slate-50 dark:border-slate-800">
                   <div>
                     <h4 className="font-extrabold text-slate-800 dark:text-slate-200">Cloud Storage Connection</h4>

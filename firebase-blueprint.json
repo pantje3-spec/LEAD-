@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "SMM CRM Client Lead",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string", "description": "Phone number of lead" },
+        "email": { "type": "string", "description": "Email address of lead" },
+        "businessName": { "type": "string" },
+        "businessType": { "type": "string" },
+        "leadSource": { "type": "string" },
+        "budget": { "type": "number" },
+        "status": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "dateAdded": { "type": "string" },
+        "followUpDate": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "email", "businessName", "status", "assignedTo"]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Onboarded SMM agency staff member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "avatarColor": { "type": "string" },
+        "leadsAssigned": { "type": "number" },
+        "dealsClosed": { "type": "number" },
+        "revenueGenerated": { "type": "number" },
+        "activeRate": { "type": "number" },
+        "staffId": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "avatarColor", "leadsAssigned", "dealsClosed", "revenueGenerated", "activeRate"]
+    },
+    "RecurringTask": {
+      "title": "RecurringTask",
+      "description": "Repetitive daily staff operation task",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memberName": { "type": "string" },
+        "title": { "type": "string" },
+        "notes": { "type": "string" },
+        "frequency": { "type": "string" },
+        "lastCompletedDate": { "type": "string" }
+      },
+      "required": ["id", "memberName", "title", "frequency"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Client leads database"
+    },
+    "/team/{memberId}": {
+      "schema": "TeamMember",
+      "description": "Staff roster and metrics"
+    },
+    "/recurring_tasks/{taskId}": {
+      "schema": "RecurringTask",
+      "description": "Daily scheduled operations for staff"
+    }
+  }
+}

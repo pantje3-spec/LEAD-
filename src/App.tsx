@@ -6,6 +6,7 @@ import {
 } from "./mockData";
 import DesktopCRM from "./components/DesktopCRM";
 import LeadDetailsModal from "./components/LeadDetailsModal";
+import { useFirebaseSync } from "./useFirebaseSync";
 
 export default function App() {
   // Global States loaded from LocalStorage (for real-world SaaS persistent experience)
@@ -20,6 +21,31 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Firebase Live Sync Handler
+  const {
+    currentUser,
+    isAuthLoading,
+    isSyncing,
+    loginWithGoogle,
+    logoutUser,
+    saveLeadToCloud,
+    deleteLeadFromCloud,
+    saveTeamMemberToCloud
+  } = useFirebaseSync(
+    leads,
+    team,
+    [],
+    (syncedLeads) => {
+      setLeads(syncedLeads);
+      localStorage.setItem("leads_crm", JSON.stringify(syncedLeads));
+    },
+    (syncedTeam) => {
+      setTeam(syncedTeam);
+      localStorage.setItem("team_crm", JSON.stringify(syncedTeam));
+    },
+    () => {}
+  );
 
   // 1. Initial State Hydration
   useEffect(() => {
@@ -93,19 +119,29 @@ export default function App() {
     setLeads(nextLeads);
     localStorage.setItem("leads_crm", JSON.stringify(nextLeads));
 
+    // Save to Cloud if signed in
+    if (currentUser) {
+      saveLeadToCloud(updatedLead);
+    }
+
     // Dynamic Team Closed Retainer Stats Engine
     const updatedTeam = team.map(member => {
       const assigned = nextLeads.filter(l => l.assignedTo === member.name);
       const closed = assigned.filter(l => l.status === "Closed");
       const rev = closed.reduce((sum, l) => sum + l.budget, 0);
       const conversionRate = assigned.length > 0 ? (closed.length / assigned.length) * 105 : 0;
-      return {
+      const nextMember = {
         ...member,
         leadsAssigned: assigned.length,
         dealsClosed: closed.length,
         revenueGenerated: rev,
         activeRate: Math.min(conversionRate, 100)
       };
+      
+      if (currentUser) {
+        saveTeamMemberToCloud(nextMember);
+      }
+      return nextMember;
     });
     setTeam(updatedTeam);
     localStorage.setItem("team_crm", JSON.stringify(updatedTeam));
@@ -152,6 +188,11 @@ export default function App() {
     setLeads(nextLeads);
     localStorage.setItem("leads_crm", JSON.stringify(nextLeads));
 
+    // Save to cloud if signed in
+    if (currentUser) {
+      saveLeadToCloud(newLead);
+    }
+
     // Push Global Real-Time Alert Log
     const newAlert: NotificationMsg = {
       id: `ntf_${Date.now()}`,
@@ -171,13 +212,18 @@ export default function App() {
       const closed = assigned.filter(l => l.status === "Closed");
       const rev = closed.reduce((sum, l) => sum + l.budget, 0);
       const conversionRate = assigned.length > 0 ? (closed.length / assigned.length) * 105 : 0;
-      return {
+      const nextMember = {
         ...member,
         leadsAssigned: assigned.length,
         dealsClosed: closed.length,
         revenueGenerated: rev,
         activeRate: Math.min(conversionRate, 100)
       };
+
+      if (currentUser) {
+        saveTeamMemberToCloud(nextMember);
+      }
+      return nextMember;
     });
     setTeam(updatedTeam);
     localStorage.setItem("team_crm", JSON.stringify(updatedTeam));
@@ -188,6 +234,10 @@ export default function App() {
     const nextLeads = leads.filter(l => l.id !== id);
     setLeads(nextLeads);
     localStorage.setItem("leads_crm", JSON.stringify(nextLeads));
+
+    if (currentUser) {
+      deleteLeadFromCloud(id);
+    }
   };
 
   // Trigger Slide drawer details
@@ -223,6 +273,11 @@ export default function App() {
             }}
             isDarkMode={isDarkMode}
             onToggleDarkMode={handleToggleDarkMode}
+            currentUser={currentUser}
+            isAuthLoading={isAuthLoading}
+            isSyncing={isSyncing}
+            loginWithGoogle={loginWithGoogle}
+            logoutUser={logoutUser}
           />
         </div>
       </div>
