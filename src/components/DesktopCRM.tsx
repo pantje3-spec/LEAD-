@@ -31,6 +31,7 @@ interface DesktopCRMProps {
   isAuthLoading?: boolean;
   isSyncing?: boolean;
   loginWithGoogle?: () => void;
+  loginWithEmail?: (email: string, password: string) => Promise<void>;
   logoutUser?: () => void;
 }
 
@@ -53,6 +54,7 @@ export default function DesktopCRM({
   isAuthLoading,
   isSyncing,
   loginWithGoogle,
+  loginWithEmail,
   logoutUser
 }: DesktopCRMProps) {
 
@@ -97,6 +99,13 @@ export default function DesktopCRM({
     ];
   });
   const [customCategoryInput, setCustomCategoryInput] = useState("");
+
+  // Email Password Login Widget States
+  const [showEmailLoginForm, setShowEmailLoginForm] = useState(false);
+  const [loginEmailInput, setLoginEmailInput] = useState("admin@smmagency.com");
+  const [loginPasswordInput, setLoginPasswordInput] = useState("admin123");
+  const [loginErrorMsg, setLoginErrorMsg] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // New Lead Creator Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -463,17 +472,87 @@ export default function DesktopCRM({
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 leading-tight">
-                Securely save your agency leads & templates to the Google Cloud.
+                Securely sync leads with Google Cloud Firestore database.
               </p>
+              
               <button
                 onClick={loginWithGoogle}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-2 px-3 rounded-xl transition text-[10px] flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-indigo-500/20"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                Sync with Google Cloud
+                Sign in with Google
               </button>
+
+              <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailLoginForm(!showEmailLoginForm)}
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline text-[9px] font-black tracking-wide uppercase flex items-center justify-between w-full"
+                >
+                  <span>🔑 Email / Pass Credentials</span>
+                  <span className="text-[8px]">{showEmailLoginForm ? "▲" : "▼"}</span>
+                </button>
+
+                {showEmailLoginForm && (
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!loginWithEmail) return;
+                      setIsLoggingIn(true);
+                      setLoginErrorMsg("");
+                      try {
+                        await loginWithEmail(loginEmailInput, loginPasswordInput);
+                      } catch (err: any) {
+                        setLoginErrorMsg(err.message || "Failed to log in.");
+                      } finally {
+                        setIsLoggingIn(false);
+                      }
+                    }}
+                    className="mt-2 space-y-2 text-[10px] bg-white dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800"
+                  >
+                    <div>
+                      <span className="block font-black text-slate-400 text-[8px] uppercase">Admin login ID:</span>
+                      <input 
+                        type="email" 
+                        value={loginEmailInput} 
+                        onChange={(e) => setLoginEmailInput(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-1 text-[10px] outline-none font-medium text-slate-700 dark:text-slate-200"
+                        required
+                        disabled={isLoggingIn}
+                      />
+                    </div>
+                    <div>
+                      <span className="block font-black text-slate-400 text-[8px] uppercase">Password:</span>
+                      <input 
+                        type="password" 
+                        value={loginPasswordInput} 
+                        onChange={(e) => setLoginPasswordInput(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-1 text-[10px] outline-none font-medium text-slate-700 dark:text-slate-200"
+                        required
+                        disabled={isLoggingIn}
+                      />
+                    </div>
+
+                    {loginErrorMsg && (
+                      <p className="text-[9px] text-rose-500 font-bold leading-normal">{loginErrorMsg}</p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isLoggingIn}
+                      className="w-full bg-indigo-600 hover:bg-slate-900 text-white font-extrabold py-1.5 rounded-lg transition text-[9px] uppercase cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      {isLoggingIn ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Sign In as Admin"}
+                    </button>
+
+                    <div className="pt-1.5 text-[8px] text-slate-400 border-t border-slate-100 dark:border-slate-800/50 leading-tight">
+                      📝 <span className="font-bold">Credential Info:</span> Use the default <span className="font-extrabold text-indigo-500">admin@smmagency.com</span> & pass <span className="font-extrabold text-indigo-500">admin123</span>. If first time, it auto-registers this credentials!
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
           )}
         </div>

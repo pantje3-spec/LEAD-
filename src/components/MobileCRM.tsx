@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
+import { User } from "firebase/auth";
+
 interface MobileCRMProps {
   leads: Lead[];
   team: TeamMember[];
@@ -13,6 +15,13 @@ interface MobileCRMProps {
   onUpdateLead: (updated: Lead) => void;
   onAddLead: (newLead: Partial<Lead>) => void;
   whatsappTemplates: WhatsappTemplate[];
+  currentUser?: User | null;
+  isAuthLoading?: boolean;
+  isSyncing?: boolean;
+  loginWithGoogle?: () => void;
+  loginWithEmail?: (email: string, password: string) => Promise<void>;
+  logoutUser?: () => void;
+  isFullscreen?: boolean;
 }
 
 export default function MobileCRM({ 
@@ -21,13 +30,27 @@ export default function MobileCRM({
   reminders,
   onUpdateLead, 
   onAddLead,
-  whatsappTemplates
+  whatsappTemplates,
+  currentUser,
+  isAuthLoading,
+  isSyncing,
+  loginWithGoogle,
+  loginWithEmail,
+  logoutUser,
+  isFullscreen = false
 }: MobileCRMProps) {
 
   const [bottomTab, setBottomTab] = useState<"home" | "leads" | "reminders">("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMobileStatus, setSelectedMobileStatus] = useState<LeadStatus | "All">("All");
   const [activeLeadDetailsId, setActiveLeadDetailsId] = useState<string | null>(null);
+
+  // Mobile Log In Form States
+  const [showMobileLoginForm, setShowMobileLoginForm] = useState(false);
+  const [mobileEmail, setMobileEmail] = useState("admin@smmagency.com");
+  const [mobilePassword, setMobilePassword] = useState("admin123");
+  const [mobileLoginError, setMobileLoginError] = useState("");
+  const [mobileIsLoggingIn, setMobileIsLoggingIn] = useState(false);
   
   // Business / Lead Categories
   const [availableCategories, setAvailableCategories] = useState<string[]>(() => {
@@ -165,15 +188,23 @@ export default function MobileCRM({
   const leadBudgetsSum = leads.reduce((acc, current) => acc + (current.status === "Closed" ? current.budget : 0), 0);
 
   return (
-    <div className="relative mx-auto w-[350px] h-[720px] bg-slate-950 rounded-[48px] border-[12px] border-slate-900 shadow-2xl overflow-hidden ring-1 ring-slate-800">
+    <div 
+      className={
+        isFullscreen 
+          ? "relative w-full max-w-sm sm:max-w-md h-[88vh] sm:h-[780px] bg-slate-50 dark:bg-slate-950 rounded-2xl sm:rounded-[36px] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col mx-auto"
+          : "relative mx-auto w-[350px] h-[720px] bg-slate-950 rounded-[48px] border-[12px] border-slate-900 shadow-2xl overflow-hidden ring-1 ring-slate-800 flex flex-col"
+      }
+    >
       
       {/* Phone Notch/Island */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 w-32 h-[18px] bg-slate-950 rounded-full z-50 flex items-center justify-center">
-        <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-800" />
-      </div>
+      {!isFullscreen && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-32 h-[18px] bg-slate-950 rounded-full z-50 flex items-center justify-center">
+          <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-800" />
+        </div>
+      )}
 
       {/* Phone Status Bar */}
-      <div className="absolute top-0 inset-x-0 h-9 bg-slate-50 dark:bg-slate-950 text-[10px] text-slate-800 dark:text-slate-300 font-bold px-7 pt-2 select-none z-40 flex justify-between items-center bg-transparent">
+      <div className={`absolute top-0 inset-x-0 h-9 bg-transparent text-[10px] text-slate-800 dark:text-slate-300 font-bold px-7 pt-2 select-none z-40 flex justify-between items-center ${isFullscreen ? "px-5 pt-1.5" : "px-7"}`}>
         <span>07:12</span>
         <div className="flex gap-1 items-center">
           <Wifi className="w-3.5 h-3.5" />
@@ -215,23 +246,142 @@ export default function MobileCRM({
           {bottomTab === "home" && (
             <div className="space-y-4 animate-fadeIn">
               {/* Profile Bar */}
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SMM Agency CRM</p>
-                  <h3 className="text-base font-bold text-slate-950 dark:text-slate-100">Consultant App</h3>
+              <div className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  {currentUser ? (
+                    currentUser.photoURL ? (
+                      <img 
+                        src={currentUser.photoURL} 
+                        alt={currentUser.displayName || "User"} 
+                        className="w-9 h-9 rounded-full border border-indigo-200 object-cover shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-indigo-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0">
+                        {currentUser.displayName ? currentUser.displayName.slice(0, 2).toUpperCase() : "US"}
+                      </div>
+                    )
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-500 font-extrabold text-xs flex items-center justify-center shrink-0">
+                      AG
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">SMM Agency CRM</p>
+                    <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 truncate">
+                      {currentUser ? (currentUser.displayName || "Agency Leader") : "Abhiraj Gupta (Local)"}
+                    </h3>
+                  </div>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-indigo-600 font-bold text-white text-xs flex items-center justify-center">
-                  AG
-                </div>
+                
+                {currentUser ? (
+                  <button
+                    onClick={logoutUser}
+                    className="text-[8px] bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 text-slate-600 dark:text-slate-350 p-1 px-2 rounded-md font-extrabold transition uppercase"
+                  >
+                    Logout
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowMobileLoginForm(!showMobileLoginForm)}
+                    className="text-[8px] bg-indigo-600 hover:bg-indigo-700 text-white p-1 px-2 rounded-md font-extrabold transition uppercase"
+                  >
+                    {showMobileLoginForm ? "Close" : "Connect"}
+                  </button>
+                )}
               </div>
 
+              {/* Mobile Credentials Login Form */}
+              {showMobileLoginForm && !currentUser && (
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-[11px] animate-slideIn">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">🔒 Admin Credentials Gateway</span>
+                    <span className="text-[10px] text-indigo-500 font-mono font-bold">Firebase Sync</span>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border border-slate-100 dark:border-slate-850 space-y-1 text-[10px]">
+                    <p className="font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest text-[8px]">🎯 Copy Credentials To Login:</p>
+                    <div><span className="font-semibold text-slate-500">ID / Email:</span> <code className="font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-bold text-slate-800 dark:text-slate-200">admin@smmagency.com</code></div>
+                    <div><span className="font-semibold text-slate-500">Password:</span> <code className="font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-bold text-slate-800 dark:text-slate-200">admin123</code></div>
+                  </div>
+
+                  <form 
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!loginWithEmail) return;
+                      setMobileIsLoggingIn(true);
+                      setMobileLoginError("");
+                      try {
+                        await loginWithEmail(mobileEmail, mobilePassword);
+                        setShowMobileLoginForm(false);
+                      } catch (err: any) {
+                        setMobileLoginError(err.message || "Failed to authenticate.");
+                      } finally {
+                        setMobileIsLoggingIn(false);
+                      }
+                    }}
+                    className="space-y-2"
+                  >
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase">Login ID (Email):</span>
+                      <input 
+                        type="email"
+                        value={mobileEmail}
+                        onChange={(e) => setMobileEmail(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs text-slate-700 dark:text-slate-200 font-medium"
+                        required
+                        disabled={mobileIsLoggingIn}
+                      />
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 uppercase">Secret Password:</span>
+                      <input 
+                        type="password"
+                        value={mobilePassword}
+                        onChange={(e) => setMobilePassword(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded p-1.5 text-xs text-slate-700 dark:text-slate-200 font-medium"
+                        required
+                        disabled={mobileIsLoggingIn}
+                      />
+                    </div>
+
+                    {mobileLoginError && (
+                      <p className="text-[9px] text-rose-500 font-bold leading-tight">{mobileLoginError}</p>
+                    )}
+
+                    <div className="flex gap-1.5 pt-1">
+                      <button
+                        type="submit"
+                        disabled={mobileIsLoggingIn}
+                        className="flex-1 bg-indigo-600 hover:bg-slate-950 text-white p-2 rounded-lg font-black uppercase text-[10px] cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        {mobileIsLoggingIn ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : "Sign In & Connect"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={loginWithGoogle}
+                        className="p-2 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-extrabold uppercase shrink-0"
+                      >
+                        Google
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {/* Status Real-time Sync Alert Banner */}
-              <div className="p-3 bg-gradient-to-r from-teal-500/10 to-indigo-500/10 rounded-xl border border-teal-500/20 flex items-center justify-between text-xs font-medium">
-                <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block shrink-0" />
-                  Realtime Cloud Sync Live
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-medium transition duration-305 ${currentUser ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+                <span className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                  <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${currentUser ? "bg-emerald-500 animate-ping" : "bg-amber-500"}`} />
+                  {currentUser ? "Realtime Cloud Sync Connected" : "Local Mode Only (Disconnected)"}
                 </span>
-                <span className="text-[10px] text-teal-600 font-mono">Secure Tunnel</span>
+                {!currentUser && (
+                  <button 
+                    onClick={() => setShowMobileLoginForm(true)}
+                    className="text-[9px] text-amber-600 dark:text-amber-400 font-bold uppercase underline"
+                  >
+                    Click to login
+                  </button>
+                )}
               </div>
 
               {/* Mobile Analytics Bento Cards */}

@@ -5,6 +5,7 @@ import {
   DEFAULT_TEMPLATES, DEFAULT_REMINIDERS, DEFAULT_NOTIFICATIONS 
 } from "./mockData";
 import DesktopCRM from "./components/DesktopCRM";
+import MobileCRM from "./components/MobileCRM";
 import LeadDetailsModal from "./components/LeadDetailsModal";
 import { useFirebaseSync } from "./useFirebaseSync";
 
@@ -21,6 +22,20 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  // Responsive layout mode
+  const [isMobileScreen, setIsMobileScreen] = useState(false);
+  const [viewPreference, setViewPreference] = useState<"auto" | "desktop" | "mobile">("auto");
+
+  // Fetch window dimensions
+  useEffect(() => {
+    const checkSize = () => {
+      setIsMobileScreen(window.innerWidth < 1024);
+    };
+    checkSize();
+    window.addEventListener("resize", checkSize);
+    return () => window.removeEventListener("resize", checkSize);
+  }, []);
 
   // Firebase Live Sync Handler
   const {
@@ -28,6 +43,7 @@ export default function App() {
     isAuthLoading,
     isSyncing,
     loginWithGoogle,
+    loginWithEmail,
     logoutUser,
     saveLeadToCloud,
     deleteLeadFromCloud,
@@ -246,39 +262,107 @@ export default function App() {
     setIsDrawerOpen(true);
   };
 
+  const isCurrentlyMobile = viewPreference === "mobile" || (viewPreference === "auto" && isMobileScreen);
+
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans select-none">
       
-      {/* 2. Unified Content Desk (Singular Desktop CRM Only) */}
+      {/* View preference indicator / switcher bar on top */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-205 dark:border-slate-800 px-4 py-2 flex items-center justify-between text-xs transition shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+          <span className="font-extrabold text-slate-700 dark:text-slate-350 tracking-wide uppercase text-[10px]">
+            SMM Agent Workspace
+          </span>
+          <span className="text-[10px] text-slate-400">
+            ({isCurrentlyMobile ? "Mobile Mode Active" : "Desktop Mode Active"})
+          </span>
+        </div>
+        <div className="flex bg-slate-100 dark:bg-slate-950 p-0.5 rounded-lg border border-slate-200 dark:border-slate-800">
+          <button
+            onClick={() => setViewPreference("auto")}
+            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer ${
+              viewPreference === "auto"
+                ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-500 dark:text-slate-450 hover:text-slate-700"
+            }`}
+          >
+            Auto Detect
+          </button>
+          <button
+            onClick={() => setViewPreference("desktop")}
+            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer ${
+              viewPreference === "desktop"
+                ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-500 dark:text-slate-450 hover:text-slate-700"
+            }`}
+          >
+            🖥️ Desktop View
+          </button>
+          <button
+            onClick={() => setViewPreference("mobile")}
+            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition cursor-pointer ${
+              viewPreference === "mobile"
+                ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-500 dark:text-slate-450 hover:text-slate-700"
+            }`}
+          >
+            📱 Mobile App
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Unified Content Desk */}
       <div className="flex-1 flex overflow-hidden relative">
         <div className="flex-1 flex overflow-hidden">
-          <DesktopCRM 
-            leads={leads}
-            team={team}
-            campaigns={campaigns}
-            whatsappTemplates={whatsappTemplates}
-            reminders={reminders}
-            notifications={notifications}
-            onUpdateLead={handleUpdateLead}
-            onAddLead={handleAddLead}
-            onDeleteLead={handleDeleteLead}
-            onSelectLead={handleSelectLeadToReview}
-            onUpdateTemplates={(updated) => {
-              setWhatsappTemplates(updated);
-              localStorage.setItem("templates_crm", JSON.stringify(updated));
-            }}
-            onUpdateTeam={(updated) => {
-              setTeam(updated);
-              localStorage.setItem("team_crm", JSON.stringify(updated));
-            }}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={handleToggleDarkMode}
-            currentUser={currentUser}
-            isAuthLoading={isAuthLoading}
-            isSyncing={isSyncing}
-            loginWithGoogle={loginWithGoogle}
-            logoutUser={logoutUser}
-          />
+          {isCurrentlyMobile ? (
+            <div className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-y-auto">
+              <MobileCRM 
+                leads={leads}
+                team={team}
+                reminders={reminders}
+                onUpdateLead={handleUpdateLead}
+                onAddLead={handleAddLead}
+                whatsappTemplates={whatsappTemplates}
+                currentUser={currentUser}
+                isAuthLoading={isAuthLoading}
+                isSyncing={isSyncing}
+                loginWithGoogle={loginWithGoogle}
+                loginWithEmail={loginWithEmail}
+                logoutUser={logoutUser}
+                isFullscreen={!isMobileScreen} // Device bezel render check
+              />
+            </div>
+          ) : (
+            <DesktopCRM 
+              leads={leads}
+              team={team}
+              campaigns={campaigns}
+              whatsappTemplates={whatsappTemplates}
+              reminders={reminders}
+              notifications={notifications}
+              onUpdateLead={handleUpdateLead}
+              onAddLead={handleAddLead}
+              onDeleteLead={handleDeleteLead}
+              onSelectLead={handleSelectLeadToReview}
+              onUpdateTemplates={(updated) => {
+                setWhatsappTemplates(updated);
+                localStorage.setItem("templates_crm", JSON.stringify(updated));
+              }}
+              onUpdateTeam={(updated) => {
+                setTeam(updated);
+                localStorage.setItem("team_crm", JSON.stringify(updated));
+              }}
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={handleToggleDarkMode}
+              currentUser={currentUser}
+              isAuthLoading={isAuthLoading}
+              isSyncing={isSyncing}
+              loginWithGoogle={loginWithGoogle}
+              loginWithEmail={loginWithEmail}
+              logoutUser={logoutUser}
+            />
+          )}
         </div>
       </div>
 

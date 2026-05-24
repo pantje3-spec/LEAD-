@@ -4,7 +4,10 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   signOut, 
-  User 
+  User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
 } from "firebase/auth";
 import { 
   collection, 
@@ -146,6 +149,25 @@ export function useFirebaseSync(
     }
   };
 
+  const loginWithEmail = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err: any) {
+      console.warn("Direct sign in failed, trying automatic signup: ", err.message);
+      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/configuration-not-allowed") {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+          await updateProfile(cred.user, { displayName: "Admin SMM Manager" });
+        } catch (regErr: any) {
+          console.error("Registration failed as well: ", regErr);
+          throw new Error(err.message || "Email Auth not enabled. Click Google Sign In or configure Email Provider in Firebase!");
+        }
+      } else {
+        throw err;
+      }
+    }
+  };
+
   const logoutUser = async () => {
     try {
       await signOut(auth);
@@ -214,6 +236,7 @@ export function useFirebaseSync(
     isAuthLoading,
     isSyncing,
     loginWithGoogle,
+    loginWithEmail,
     logoutUser,
     saveLeadToCloud,
     deleteLeadFromCloud,
