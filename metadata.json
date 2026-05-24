@@ -1,0 +1,6 @@
+{
+  "name": "LeadFlow CRM",
+  "description": "A professional SMM Agency CRM featuring a responsive Desktop Dashboard and an interactive Mobile App Simulator with instant real-time data sync, WhatsApp marketing templates, campaign analytics, and Gemini AI insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
