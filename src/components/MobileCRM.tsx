@@ -47,8 +47,8 @@ export default function MobileCRM({
 
   // Mobile Log In Form States
   const [showMobileLoginForm, setShowMobileLoginForm] = useState(false);
-  const [mobileEmail, setMobileEmail] = useState("admin@smmagency.com");
-  const [mobilePassword, setMobilePassword] = useState("admin123");
+  const [mobileEmail, setMobileEmail] = useState("");
+  const [mobilePassword, setMobilePassword] = useState("");
   const [mobileLoginError, setMobileLoginError] = useState("");
   const [mobileIsLoggingIn, setMobileIsLoggingIn] = useState(false);
   
@@ -291,17 +291,12 @@ export default function MobileCRM({
                 )}
               </div>
 
-              {/* Mobile Credentials Login Form */}
+               {/* Mobile Credentials Login Form */}
               {showMobileLoginForm && !currentUser && (
                 <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-[11px] animate-slideIn">
                   <div className="flex items-center justify-between">
                     <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">🔒 Admin Credentials Gateway</span>
                     <span className="text-[10px] text-indigo-500 font-mono font-bold">Firebase Sync</span>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border border-slate-100 dark:border-slate-850 space-y-1 text-[10px]">
-                    <p className="font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest text-[8px]">🎯 Copy Credentials To Login:</p>
-                    <div><span className="font-semibold text-slate-500">ID / Email:</span> <code className="font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-bold text-slate-800 dark:text-slate-200">admin@smmagency.com</code></div>
-                    <div><span className="font-semibold text-slate-500">Password:</span> <code className="font-mono bg-slate-200 dark:bg-slate-800 px-1 py-0.5 rounded font-bold text-slate-800 dark:text-slate-200">admin123</code></div>
                   </div>
 
                   <form 

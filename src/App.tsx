@@ -8,6 +8,7 @@ import DesktopCRM from "./components/DesktopCRM";
 import MobileCRM from "./components/MobileCRM";
 import LeadDetailsModal from "./components/LeadDetailsModal";
 import { useFirebaseSync } from "./useFirebaseSync";
+import { Lock, Mail, Key, RefreshCw, ShieldCheck, HelpCircle } from "lucide-react";
 
 export default function App() {
   // Global States loaded from LocalStorage (for real-world SaaS persistent experience)
@@ -26,6 +27,12 @@ export default function App() {
   // Responsive layout mode
   const [isMobileScreen, setIsMobileScreen] = useState(false);
   const [viewPreference, setViewPreference] = useState<"auto" | "desktop" | "mobile">("auto");
+
+  // Gateway Form States
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Fetch window dimensions
   useEffect(() => {
@@ -263,6 +270,130 @@ export default function App() {
   };
 
   const isCurrentlyMobile = viewPreference === "mobile" || (viewPreference === "auto" && isMobileScreen);
+
+  // 1. Loading State Screen
+  if (isAuthLoading) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 font-sans">
+        <div className="text-center space-y-4">
+          <div className="relative flex items-center justify-center">
+            <span className="absolute animate-ping inline-flex h-12 w-12 rounded-full bg-indigo-400 opacity-20"></span>
+            <RefreshCw className="w-10 h-10 text-indigo-600 dark:text-indigo-400 animate-spin relative" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest">SMM Agency Workspace</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Checking Cloud Gatekeeper Authorization...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Strict Access Control Gateway Lock
+  if (!currentUser) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-4 font-sans select-none overflow-y-auto">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl p-8 space-y-6">
+          <div className="text-center space-y-2">
+            <div className="inline-flex p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+              <Lock className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">SMM Workspace Locked</h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Authenticate to access leads, team analytics, and marketing pipelines.</p>
+            </div>
+          </div>
+
+          <form 
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!loginWithEmail) return;
+              setIsLoggingIn(true);
+              setLoginError("");
+              try {
+                await loginWithEmail(emailInput, passwordInput);
+              } catch (err: any) {
+                setLoginError(err.message || "Failed to log in.");
+              } finally {
+                setIsLoggingIn(false);
+              }
+            }}
+            className="space-y-4 text-xs"
+          >
+            <div className="space-y-1">
+              <label className="block font-black text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wide">Administrator Email</label>
+              <div className="relative">
+                <input 
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl font-medium outline-none focus:border-indigo-500 dark:focus:border-indigo-400 text-slate-800 dark:text-slate-150"
+                  required
+                  disabled={isLoggingIn}
+                  placeholder="admin@smmagency.com"
+                />
+                <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block font-black text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wide">Secret Passcode</label>
+              <div className="relative">
+                <input 
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 rounded-xl font-medium outline-none focus:border-indigo-500 dark:focus:border-indigo-400 text-slate-800 dark:text-slate-150"
+                  required
+                  disabled={isLoggingIn}
+                  placeholder="••••••••"
+                />
+                <Key className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+              </div>
+            </div>
+
+            {loginError && (
+              <p className="text-rose-500 text-[11px] font-bold leading-normal bg-rose-50/50 dark:bg-rose-950/20 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900/30">
+                ⚠️ {loginError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full py-3 px-4 bg-indigo-600 hover:bg-slate-950 dark:hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition shadow-xs cursor-pointer flex items-center justify-center gap-2"
+            >
+              {isLoggingIn ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Unlocking workstation...
+                </>
+              ) : (
+                <>Unlocks Portal Workspace</>
+              )}
+            </button>
+          </form>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-100 dark:border-slate-800/80"></div>
+            <span className="flex-shrink mx-3 text-[10px] text-slate-400 font-bold uppercase tracking-wider">or Connect securely via</span>
+            <div className="flex-grow border-t border-slate-100 dark:border-slate-800/80"></div>
+          </div>
+
+          <button
+            onClick={loginWithGoogle}
+            disabled={isLoggingIn}
+            className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-extrabold text-xs uppercase tracking-wide rounded-xl transition cursor-pointer flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4 mr-1 shrink-0" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.579-7.859-8s3.529-8 7.859-8c2.463 0 4.114 1.025 5.057 1.926l3.245-3.13C18.42 2.152 15.603 1 12.24 1 5.914 1 1 5.914 1 12.24s4.914 11.24 11.24 11.24c6.64 0 11.057-4.664 11.057-11.24 0-.756-.08-1.334-.183-1.955H12.24z" />
+            </svg>
+            Sign in with Google Cloud
+          </button>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-screen h-screen flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-950 font-sans select-none">

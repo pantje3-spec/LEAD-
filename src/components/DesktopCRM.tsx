@@ -102,8 +102,8 @@ export default function DesktopCRM({
 
   // Email Password Login Widget States
   const [showEmailLoginForm, setShowEmailLoginForm] = useState(false);
-  const [loginEmailInput, setLoginEmailInput] = useState("admin@smmagency.com");
-  const [loginPasswordInput, setLoginPasswordInput] = useState("admin123");
+  const [loginEmailInput, setLoginEmailInput] = useState("");
+  const [loginPasswordInput, setLoginPasswordInput] = useState("");
   const [loginErrorMsg, setLoginErrorMsg] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -546,10 +546,6 @@ export default function DesktopCRM({
                     >
                       {isLoggingIn ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Sign In as Admin"}
                     </button>
-
-                    <div className="pt-1.5 text-[8px] text-slate-400 border-t border-slate-100 dark:border-slate-800/50 leading-tight">
-                      📝 <span className="font-bold">Credential Info:</span> Use the default <span className="font-extrabold text-indigo-500">admin@smmagency.com</span> & pass <span className="font-extrabold text-indigo-500">admin123</span>. If first time, it auto-registers this credentials!
-                    </div>
                   </form>
                 )}
               </div>
