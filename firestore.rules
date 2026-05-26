@@ -57,31 +57,36 @@ service cloud.firestore {
         && data.frequency is string && data.frequency.size() <= 50;
     }
 
-    // Leads Match Blocks
-    match /leads/{leadId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isEmailVerified() && isValidId(leadId) && isValidLead(incoming()) && incoming().id == leadId;
-      allow update: if isEmailVerified() && isValidId(leadId) && isValidLead(incoming()) && incoming().id == leadId;
-      allow delete: if isEmailVerified() && isValidId(leadId);
-    }
+    // Users Namespace Match Block
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
 
-    // Team Match Blocks
-    match /team/{memberId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isEmailVerified() && isValidId(memberId) && isValidTeamMember(incoming()) && incoming().id == memberId;
-      allow update: if isEmailVerified() && isValidId(memberId) && isValidTeamMember(incoming()) && incoming().id == memberId;
-      allow delete: if isEmailVerified() && isValidId(memberId);
-    }
+      // Leads Match Blocks nestled under specific User ID
+      match /leads/{leadId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(leadId) && isValidLead(incoming()) && incoming().id == leadId;
+        allow update: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(leadId) && isValidLead(incoming()) && incoming().id == leadId;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(leadId);
+      }
 
-    // Recurring Tasks Match Blocks
-    match /recurring_tasks/{taskId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isEmailVerified() && isValidId(taskId) && isValidRecurringTask(incoming()) && incoming().id == taskId;
-      allow update: if isEmailVerified() && isValidId(taskId) && isValidRecurringTask(incoming()) && incoming().id == taskId;
-      allow delete: if isEmailVerified() && isValidId(taskId);
+      // Team Match Blocks nestled under specific User ID
+      match /team/{memberId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(memberId) && isValidTeamMember(incoming()) && incoming().id == memberId;
+        allow update: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(memberId) && isValidTeamMember(incoming()) && incoming().id == memberId;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(memberId);
+      }
+
+      // Recurring Tasks Match Blocks nestled under specific User ID
+      match /recurring_tasks/{taskId} {
+        allow get: if isSignedIn() && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(taskId) && isValidRecurringTask(incoming()) && incoming().id == taskId;
+        allow update: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(taskId) && isValidRecurringTask(incoming()) && incoming().id == taskId;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isEmailVerified() && isValidId(taskId);
+      }
     }
   }
 }

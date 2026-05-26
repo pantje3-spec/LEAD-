@@ -7,7 +7,8 @@ import {
   User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { 
   collection, 
@@ -27,14 +28,26 @@ export function useFirebaseSync(
   onSyncTeam: (team: TeamMember[]) => void,
   onSyncTasks: (tasks: RecurringTask[]) => void
 ) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>({
+    uid: "offline_g",
+    email: "abhirajgupta12p@gmail.com",
+    displayName: "Abhiraj Gupta",
+  } as any);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Auth observer
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+      if (user) {
+        setCurrentUser(user);
+      } else {
+        setCurrentUser({
+          uid: "offline_g",
+          email: "abhirajgupta12p@gmail.com",
+          displayName: "Abhiraj Gupta",
+        } as any);
+      }
       setIsAuthLoading(false);
     });
     return unsubscribe;
@@ -42,7 +55,7 @@ export function useFirebaseSync(
 
   // Listeners for Firestore data when authenticated
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || currentUser.uid === "offline_g") {
       setIsSyncing(false);
       return;
     }
@@ -51,7 +64,7 @@ export function useFirebaseSync(
 
     // 1. Listen for Leads
     const unsubLeads = onSnapshot(
-      collection(db, "leads"),
+      collection(db, "users", currentUser.uid, "leads"),
       (snapshot) => {
         const fetchedLeads: Lead[] = [];
         snapshot.forEach((doc) => {
@@ -64,23 +77,23 @@ export function useFirebaseSync(
           // If Firestore is empty, seed it with the user's existing local leads
           initialLeads.forEach(async (lead) => {
             try {
-              await setDoc(doc(db, "leads", lead.id), lead);
+              await setDoc(doc(db, "users", currentUser.uid, "leads", lead.id), lead);
             } catch (err) {
-              handleFirestoreError(err, OperationType.CREATE, `leads/${lead.id}`);
+              handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}/leads/${lead.id}`);
             }
           });
         }
         setIsSyncing(false);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, "leads");
+        handleFirestoreError(error, OperationType.LIST, `users/${currentUser.uid}/leads`);
         setIsSyncing(false);
       }
     );
 
     // 2. Listen for Team
     const unsubTeam = onSnapshot(
-      collection(db, "team"),
+      collection(db, "users", currentUser.uid, "team"),
       (snapshot) => {
         const fetchedTeam: TeamMember[] = [];
         snapshot.forEach((doc) => {
@@ -93,21 +106,21 @@ export function useFirebaseSync(
           // If Firestore is empty, seed it with the default team
           initialTeam.forEach(async (member) => {
             try {
-              await setDoc(doc(db, "team", member.id), member);
+              await setDoc(doc(db, "users", currentUser.uid, "team", member.id), member);
             } catch (err) {
-              handleFirestoreError(err, OperationType.CREATE, `team/${member.id}`);
+              handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}/team/${member.id}`);
             }
           });
         }
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, "team");
+        handleFirestoreError(error, OperationType.LIST, `users/${currentUser.uid}/team`);
       }
     );
 
     // 3. Listen for Recurring Tasks
     const unsubTasks = onSnapshot(
-      collection(db, "recurring_tasks"),
+      collection(db, "users", currentUser.uid, "recurring_tasks"),
       (snapshot) => {
         const fetchedTasks: RecurringTask[] = [];
         snapshot.forEach((doc) => {
@@ -120,15 +133,15 @@ export function useFirebaseSync(
           // If Firestore is empty, seed it with default local tasks
           initialTasks.forEach(async (task) => {
             try {
-              await setDoc(doc(db, "recurring_tasks", task.id), task);
+              await setDoc(doc(db, "users", currentUser.uid, "recurring_tasks", task.id), task);
             } catch (err) {
-              handleFirestoreError(err, OperationType.CREATE, `recurring_tasks/${task.id}`);
+              handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}/recurring_tasks/${task.id}`);
             }
           });
         }
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, "recurring_tasks");
+        handleFirestoreError(error, OperationType.LIST, `users/${currentUser.uid}/recurring_tasks`);
       }
     );
 
@@ -154,18 +167,44 @@ export function useFirebaseSync(
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err: any) {
       console.warn("Direct sign in failed, trying automatic signup: ", err.message);
-      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/configuration-not-allowed") {
+      if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/operation-not-allowed" || err.code === "auth/configuration-not-allowed") {
         try {
           const cred = await createUserWithEmailAndPassword(auth, email, password);
           await updateProfile(cred.user, { displayName: "Admin SMM Manager" });
         } catch (regErr: any) {
           console.error("Registration failed as well: ", regErr);
-          throw new Error(err.message || "Email Auth not enabled. Click Google Sign In or configure Email Provider in Firebase!");
+          if (regErr.code === "auth/email-already-in-use") {
+            throw new Error(`The email "${email}" is already registered. The password you entered is incorrect. please check your password or use "Reset Password".`);
+          }
+          if (regErr.code === "auth/weak-password") {
+            throw new Error("The password is too weak. Please use at least 6 characters.");
+          }
+          throw new Error(regErr.message || "Registration failed. Click Google Sign In or bypass with Offline Mode.");
         }
       } else {
         throw err;
       }
     }
+  };
+
+  const sendPasswordReset = async (email: string) => {
+    if (!email) {
+      throw new Error("Please enter an email address to reset password.");
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (err: any) {
+      console.error("Password reset error: ", err);
+      throw new Error(err.message || "Failed to send password reset email.");
+    }
+  };
+
+  const loginOffline = () => {
+    setCurrentUser({
+      uid: "offline_g",
+      email: "abhirajgupta12p@gmail.com",
+      displayName: "Abhiraj Gupta (Local Workspace)",
+    } as any);
   };
 
   const logoutUser = async () => {
@@ -178,56 +217,56 @@ export function useFirebaseSync(
 
   // Mutator actions that write to firestore if logged in, else write to local cache (handled by app)
   const saveLeadToCloud = async (lead: Lead) => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.uid === "offline_g") return;
     try {
-      await setDoc(doc(db, "leads", lead.id), lead);
+      await setDoc(doc(db, "users", currentUser.uid, "leads", lead.id), lead);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `leads/${lead.id}`);
+      handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/leads/${lead.id}`);
     }
   };
 
   const deleteLeadFromCloud = async (leadId: string) => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.uid === "offline_g") return;
     try {
-      await deleteDoc(doc(db, "leads", leadId));
+      await deleteDoc(doc(db, "users", currentUser.uid, "leads", leadId));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `leads/${leadId}`);
+      handleFirestoreError(err, OperationType.DELETE, `users/${currentUser.uid}/leads/${leadId}`);
     }
   };
 
   const saveTeamMemberToCloud = async (member: TeamMember) => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.uid === "offline_g") return;
     try {
-      await setDoc(doc(db, "team", member.id), member);
+      await setDoc(doc(db, "users", currentUser.uid, "team", member.id), member);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `team/${member.id}`);
+      handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/team/${member.id}`);
     }
   };
 
   const deleteTeamMemberFromCloud = async (memberId: string) => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.uid === "offline_g") return;
     try {
-      await deleteDoc(doc(db, "team", memberId));
+      await deleteDoc(doc(db, "users", currentUser.uid, "team", memberId));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `team/${memberId}`);
+      handleFirestoreError(err, OperationType.DELETE, `users/${currentUser.uid}/team/${memberId}`);
     }
   };
 
   const saveTaskToCloud = async (task: RecurringTask) => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.uid === "offline_g") return;
     try {
-      await setDoc(doc(db, "recurring_tasks", task.id), task);
+      await setDoc(doc(db, "users", currentUser.uid, "recurring_tasks", task.id), task);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `recurring_tasks/${task.id}`);
+      handleFirestoreError(err, OperationType.WRITE, `users/${currentUser.uid}/recurring_tasks/${task.id}`);
     }
   };
 
   const deleteTaskFromCloud = async (taskId: string) => {
-    if (!currentUser) return;
+    if (!currentUser || currentUser.uid === "offline_g") return;
     try {
-      await deleteDoc(doc(db, "recurring_tasks", taskId));
+      await deleteDoc(doc(db, "users", currentUser.uid, "recurring_tasks", taskId));
     } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `recurring_tasks/${taskId}`);
+      handleFirestoreError(err, OperationType.DELETE, `users/${currentUser.uid}/recurring_tasks/${taskId}`);
     }
   };
 
@@ -237,6 +276,8 @@ export function useFirebaseSync(
     isSyncing,
     loginWithGoogle,
     loginWithEmail,
+    sendPasswordReset,
+    loginOffline,
     logoutUser,
     saveLeadToCloud,
     deleteLeadFromCloud,

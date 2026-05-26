@@ -102,7 +102,7 @@ export default function DesktopCRM({
 
   // Email Password Login Widget States
   const [showEmailLoginForm, setShowEmailLoginForm] = useState(false);
-  const [loginEmailInput, setLoginEmailInput] = useState("");
+  const [loginEmailInput, setLoginEmailInput] = useState("abhirajgupta12p@gmail.com");
   const [loginPasswordInput, setLoginPasswordInput] = useState("");
   const [loginErrorMsg, setLoginErrorMsg] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);

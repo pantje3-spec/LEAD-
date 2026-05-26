@@ -53,17 +53,17 @@
     }
   },
   "firestore": {
-    "/leads/{leadId}": {
+    "/users/{userId}/leads/{leadId}": {
       "schema": "Lead",
-      "description": "Client leads database"
+      "description": "Client leads database isolated per user workspace"
     },
-    "/team/{memberId}": {
+    "/users/{userId}/team/{memberId}": {
       "schema": "TeamMember",
-      "description": "Staff roster and metrics"
+      "description": "Staff roster and metrics isolated per user workspace"
     },
-    "/recurring_tasks/{taskId}": {
+    "/users/{userId}/recurring_tasks/{taskId}": {
       "schema": "RecurringTask",
-      "description": "Daily scheduled operations for staff"
+      "description": "Daily scheduled operations for staff isolated per user workspace"
     }
   }
 }
