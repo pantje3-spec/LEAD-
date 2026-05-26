@@ -38,7 +38,7 @@ export default function App() {
   // Fetch window dimensions
   useEffect(() => {
     const checkSize = () => {
-      setIsMobileScreen(window.innerWidth < 1024);
+      setIsMobileScreen(window.innerWidth < 768);
     };
     checkSize();
     window.addEventListener("resize", checkSize);
@@ -301,7 +301,7 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden relative">
         <div className="flex-1 flex overflow-hidden">
           {isCurrentlyMobile ? (
-            <div className="flex-1 flex items-center justify-center bg-slate-100 dark:bg-slate-950 p-2 sm:p-4 overflow-y-auto">
+            <div className="flex-1 flex bg-slate-100 dark:bg-slate-950 overflow-hidden w-full h-full">
               <MobileCRM 
                 leads={leads}
                 team={team}
@@ -315,7 +315,7 @@ export default function App() {
                 loginWithGoogle={loginWithGoogle}
                 loginWithEmail={loginWithEmail}
                 logoutUser={logoutUser}
-                isFullscreen={!isMobileScreen} // Device bezel render check
+                isFullscreen={true} // Clean, native fluid mode
               />
             </div>
           ) : (

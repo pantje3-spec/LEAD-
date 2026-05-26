@@ -120,6 +120,7 @@ export default function DesktopCRM({
 
   // Search notification view state
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Quick WhatsApp template editor state
   const [isAddingTemplate, setIsAddingTemplate] = useState(false);
@@ -326,19 +327,37 @@ export default function DesktopCRM({
   const closedCount = leads.filter(l => l.status === "Closed").length;
 
   return (
-    <div className="flex-1 flex overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
+    <div className="flex-1 flex overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans relative">
       
+      {/* Sidebar background overlay on smaller screens */}
+      <div 
+        className={`fixed inset-0 bg-slate-900/40 z-40 lg:hidden transition-opacity duration-300 ${
+          isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
+
       {/* 1. Left Sidebar Navigation */}
-      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col shrink-0">
+      <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col shrink-0 z-45 transition-transform duration-300 lg:translate-x-0 ${
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
         {/* Brand Header */}
-        <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold shadow-md shadow-indigo-500/20">
-            LF
+        <div className="p-6 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-extrabold shadow-md shadow-indigo-500/20">
+              LF
+            </div>
+            <div>
+              <h1 className="text-sm font-black text-slate-800 dark:text-slate-100">LeadFlow Pro</h1>
+              <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">SMM Agency CRM</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-black text-slate-800 dark:text-slate-100">LeadFlow Pro</h1>
-            <p className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">SMM Agency CRM</p>
-          </div>
+          <button 
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Sidebar Nav Items */}
@@ -353,7 +372,10 @@ export default function DesktopCRM({
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveMenu(item.id as any)}
+                onClick={() => {
+                  setActiveMenu(item.id as any);
+                  setIsSidebarOpen(false);
+                }}
                 className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-semibold tracking-wide cursor-pointer transition ${
                   activeMenu === item.id 
                     ? "bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400" 
@@ -381,7 +403,10 @@ export default function DesktopCRM({
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveMenu(item.id as any)}
+                onClick={() => {
+                  setActiveMenu(item.id as any);
+                  setIsSidebarOpen(false);
+                }}
                 className={`w-full flex items-center justify-between py-2 px-3.5 rounded-xl text-xs font-semibold cursor-pointer transition ${
                   activeMenu === item.id 
                     ? "bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400" 
@@ -411,7 +436,10 @@ export default function DesktopCRM({
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveMenu(item.id as any)}
+                onClick={() => {
+                  setActiveMenu(item.id as any);
+                  setIsSidebarOpen(false);
+                }}
                 className={`w-full flex items-center gap-3 py-2.5 px-3.5 rounded-xl text-xs font-semibold cursor-pointer transition ${
                   activeMenu === item.id 
                     ? "bg-indigo-50 dark:bg-indigo-950/45 text-indigo-600 dark:text-indigo-400" 
@@ -560,16 +588,28 @@ export default function DesktopCRM({
         {/* Top Navigation Bar */}
         <header className="h-16 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex justify-between items-center shrink-0 gap-4">
           
-          {/* Left search */}
-          <div className="relative w-80 max-w-xs text-xs">
-            <input 
-              type="text"
-              placeholder="Search leads, phones, emails..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-100 dark:border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs font-medium outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-600"
-            />
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+          {/* Left search with Menu Toggle on Medium/Tablet Screens */}
+          <div className="flex items-center gap-3 w-80 max-w-xs text-xs">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 shrink-0 cursor-pointer"
+              title="Open CRM Menu"
+            >
+              {/* Menu icon */}
+              <svg className="w-5 h-5 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+            <div className="relative flex-1">
+              <input 
+                type="text"
+                placeholder="Search leads, phones, emails..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950/80 border border-slate-100 dark:border-slate-800 rounded-xl py-2 pl-9 pr-4 text-xs font-medium outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-600"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            </div>
           </div>
 
           {/* Right widgets */}

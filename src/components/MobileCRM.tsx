@@ -45,6 +45,12 @@ export default function MobileCRM({
   const [selectedMobileStatus, setSelectedMobileStatus] = useState<LeadStatus | "All">("All");
   const [activeLeadDetailsId, setActiveLeadDetailsId] = useState<string | null>(null);
 
+  // Advanced Mobile Filter States
+  const [selectedMobileAgent, setSelectedMobileAgent] = useState("All");
+  const [selectedMobileSource, setSelectedMobileSource] = useState("All");
+  const [mobileBudgetFilter, setMobileBudgetFilter] = useState<number>(0);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
   // Mobile Log In Form States
   const [showMobileLoginForm, setShowMobileLoginForm] = useState(false);
   const [mobileEmail, setMobileEmail] = useState("abhirajgupta12p@gmail.com");
@@ -178,7 +184,10 @@ export default function MobileCRM({
     const matchesSearch = l.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           l.businessName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = selectedMobileStatus === "All" || l.status === selectedMobileStatus;
-    return matchesSearch && matchesStatus;
+    const matchesAgent = selectedMobileAgent === "All" || l.assignedTo === selectedMobileAgent;
+    const matchesSource = selectedMobileSource === "All" || l.leadSource === selectedMobileSource;
+    const matchesBudget = l.budget >= mobileBudgetFilter;
+    return matchesSearch && matchesStatus && matchesAgent && matchesSource && matchesBudget;
   });
 
   // Calculate quick statistics for mobile home
@@ -189,29 +198,9 @@ export default function MobileCRM({
 
   return (
     <div 
-      className={
-        isFullscreen 
-          ? "relative w-full max-w-sm sm:max-w-md h-[88vh] sm:h-[780px] bg-slate-50 dark:bg-slate-950 rounded-2xl sm:rounded-[36px] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col mx-auto"
-          : "relative mx-auto w-[350px] h-[720px] bg-slate-950 rounded-[48px] border-[12px] border-slate-900 shadow-2xl overflow-hidden ring-1 ring-slate-800 flex flex-col"
-      }
+      className="relative w-full h-full flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden"
     >
       
-      {/* Phone Notch/Island */}
-      {!isFullscreen && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-32 h-[18px] bg-slate-950 rounded-full z-50 flex items-center justify-center">
-          <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-800" />
-        </div>
-      )}
-
-      {/* Phone Status Bar */}
-      <div className={`absolute top-0 inset-x-0 h-9 bg-transparent text-[10px] text-slate-800 dark:text-slate-300 font-bold px-7 pt-2 select-none z-40 flex justify-between items-center ${isFullscreen ? "px-5 pt-1.5" : "px-7"}`}>
-        <span>07:12</span>
-        <div className="flex gap-1 items-center">
-          <Wifi className="w-3.5 h-3.5" />
-          <Battery className="w-4 h-4 text-emerald-500 shrink-0" />
-        </div>
-      </div>
-
       {/* Simulated Device Push Notification Banner */}
       <AnimatePresence>
         {mobileNotification && (
@@ -219,7 +208,7 @@ export default function MobileCRM({
             initial={{ opacity: 0, y: -40, scale: 0.9 }}
             animate={{ opacity: 1, y: 12, scale: 1 }}
             exit={{ opacity: 0, y: -30, scale: 0.95 }}
-            className="absolute top-10 inset-x-3.5 bg-slate-900/95 backdrop-blur-md border border-slate-800 p-3 rounded-2xl shadow-xl z-50 flex items-start gap-2.5 text-xs select-none leading-tight pointer-events-auto cursor-pointer"
+            className="absolute top-4 inset-x-3.5 bg-slate-900/95 backdrop-blur-md border border-slate-800 p-3 rounded-2xl shadow-xl z-50 flex items-start gap-2.5 text-xs select-none leading-tight pointer-events-auto cursor-pointer"
             onClick={() => {
               setMobileNotification(null);
               setBottomTab("leads");
@@ -237,10 +226,10 @@ export default function MobileCRM({
       </AnimatePresence>
 
       {/* Screen Interactive Container */}
-      <div className="w-full h-full pt-9 pb-12 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden flex flex-col relative select-none">
+      <div className="w-full h-full pb-14 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden flex flex-col relative select-none">
         
         {/* Scrollable Area */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-8 space-y-4">
           
           {/* TAB 1: HOME DASHBOARD */}
           {bottomTab === "home" && (
@@ -475,17 +464,108 @@ export default function MobileCRM({
                 ))}
               </div>
 
-              {/* Mobile Search input */}
-              <div className="relative text-xs">
-                <input 
-                  type="text" 
-                  placeholder="Filter by name/brand..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl py-2 px-8.5 text-xs outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-600 transition"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              {/* Mobile Search & Filter toggle row */}
+              <div className="flex gap-2 text-xs">
+                <div className="relative flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Filter by name/brand..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 rounded-xl py-2 pl-9 pr-4 text-xs outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-600 transition font-medium"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className={`p-2 px-3 rounded-xl border flex items-center justify-center cursor-pointer transition ${
+                    showAdvancedFilters || selectedMobileAgent !== "All" || selectedMobileSource !== "All" || mobileBudgetFilter > 0
+                      ? "bg-indigo-650 border-indigo-600 text-indigo-100 bg-indigo-600/10 dark:bg-indigo-950/40"
+                      : "bg-white border-slate-200/50 text-slate-500 hover:text-slate-800 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  }`}
+                  title="Advanced Filters"
+                >
+                  {/* Filter icon */}
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 8.293A1 1 0 013 7.586V4z" />
+                  </svg>
+                </button>
               </div>
+
+              {/* Advanced mobile retractable pancake */}
+              <AnimatePresence>
+                {showAdvancedFilters && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden bg-slate-100/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 p-3 rounded-2xl space-y-3.5 shadow-xs text-xs"
+                  >
+                    <div className="flex justify-between items-center pb-1 border-b border-slate-200/55 dark:border-slate-800/50">
+                      <span className="font-extrabold text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-widest">Workspace Advanced Filtering</span>
+                      <button 
+                        onClick={() => {
+                          setSelectedMobileAgent("All");
+                          setSelectedMobileSource("All");
+                          setMobileBudgetFilter(0);
+                        }}
+                        className="text-[9px] text-indigo-600 dark:text-indigo-400 font-extrabold hover:underline uppercase tracking-wide"
+                      >
+                        Reset All
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">In-charge Specialist</span>
+                        <select
+                          value={selectedMobileAgent}
+                          onChange={(e) => setSelectedMobileAgent(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-[11px] text-slate-700 dark:text-slate-250 font-bold outline-none"
+                        >
+                          <option value="All">All Specialists</option>
+                          {team.map(m => (
+                            <option key={m.id} value={m.name}>{m.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="block text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Ad Acquisition</span>
+                        <select
+                          value={selectedMobileSource}
+                          onChange={(e) => setSelectedMobileSource(e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-[11px] text-slate-700 dark:text-slate-250 font-bold outline-none"
+                        >
+                          <option value="All">All Channels</option>
+                          <option value="Meta Ads">Meta Ads</option>
+                          <option value="Google Search">Google Search</option>
+                          <option value="Instagram DM">Instagram DM</option>
+                          <option value="TikTok Ad">TikTok Ad</option>
+                          <option value="Referral">Referral</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/50 dark:border-slate-800 flex flex-col gap-1.5">
+                      <div className="flex justify-between items-center text-[9px] font-extrabold">
+                        <span className="text-slate-400 dark:text-slate-500">Min Budget Limit:</span>
+                        <span className="font-mono text-indigo-600 dark:text-indigo-400">₹{mobileBudgetFilter.toLocaleString("en-IN")}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={80000}
+                        step={5000}
+                        value={mobileBudgetFilter}
+                        onChange={(e) => setMobileBudgetFilter(Number(e.target.value))}
+                        className="w-full accent-indigo-600 cursor-pointer h-1 bg-slate-100 dark:bg-slate-950 rounded-full appearance-none"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Mobile Leads Scrollable Stack */}
               <div className="space-y-2.5">
@@ -650,9 +730,6 @@ export default function MobileCRM({
             <span className="text-[9px] font-bold">Tasks</span>
           </button>
         </div>
-
-        {/* iOS Quick Home Indicator Bar */}
-        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-[4px] bg-slate-300 dark:bg-slate-800 rounded-full z-40 select-nonepointer-events-none" />
       </div>
 
       {/* MOBILE POPUP LEAD SHEET DETAILS MODAL */}
